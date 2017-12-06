@@ -1,0 +1,244 @@
+---
+title: "Week2.HW.data"
+author: "Bryan Aguiar"
+date: "Sunday, April 05, 2015"
+output: html_document
+---
+##Week 5 Homework
+The  data	file contains	the	systolic	blood	pressure	(SBP),	body	size	(QUET),	age	(AGE),	and	smoking	history	(SMK	=	0	if	nonsmoker,	SMK	=	1	if	a	current	or	previous	smoker)	for	a	hypothetical sample	of	32	white	males	over	40	years	old	from	the	town	of	Angina.
+
+```{r, warning=FALSE,message=FALSE}
+##Clear the environment
+rm(list=ls())
+
+##Turn off scientific notations for numbers
+options(scipen = 999)  
+
+##Set locale
+Sys.setlocale("LC_ALL", "English") 
+
+##Set seed for reproducibility
+set.seed(2345)
+
+# load libraries
+library(car)
+
+##Function for pi
+plot.add.pi <- function(x, y, interval='prediction', level=0.95, regressionColor='red', ...) {
+  xOrder  <- order(x)
+	x       <- x[xOrder]  
+	y       <- y[xOrder]
+        fit     <- lm(y ~ x, data=data.frame(x=x, y=y))
+	newX    <- data.frame(x=jitter(x))
+	fitPred <- predict.lm(fit, newdata=newX, interval=interval, level=level, ...)
+	abline(lm(y ~ x), col=regressionColor)
+	lines(newX$x, fitPred[,2], lty=2, ...)
+	lines(newX$x, fitPred[,3], lty=2, ...)
+}
+
+##Function for ci
+plot.add.ci <- function(x, y, interval='confidence', level=0.95, regressionColor='red', ...) {
+  xOrder  <- order(x)
+  x       <- x[xOrder]  
+	y       <- y[xOrder]
+        fit     <- lm(y ~ x, data=data.frame(x=x, y=y))
+	newX    <- data.frame(x=jitter(x))
+	fitPred <- predict.lm(fit, newdata=newX, interval=interval, level=level, ...)
+	#abline(lm(y ~ x), col=regressionColor)
+	lines(newX$x, fitPred[,2], lty=2, ...)
+	lines(newX$x, fitPred[,3], lty=2, ...)
+}
+
+# Function to extract the overall ANOVA p-value out of a linear model object
+lmp <- function (modelobject) {
+  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+	f <- summary(modelobject)$fstatistic
+	p <- pf(f[1],f[2],f[3],lower.tail=F)
+	attributes(p) <- NULL
+	return(p)
+}
+ 
+DF<- read.csv("D:/Data/week2-HW-data.csv")
+DF2<-read.csv("D:/Data/week5-HW-data.csv")
+summary(DF)
+```
+
+##Exercise One
+
+Earlier in the course we studied the multiple regression relationship of SBP (Y) to AGE (X1), SMK (X2), and QUET (X3) using the data in Homework 1 of Week 2. 
+
+Three regression models will now be considered:
+
+
+Model Independent Variables Used
+
+model 1 AGE (X1)
+```{r,echo=FALSE}
+fit01 <- lm(SBP ~ AGE, data = DF)
+summary(fit01)
+```
+
+Confidence intervals for all parameters
+```{r,echo=FALSE}
+# CIs for all parameters
+confint(fit01)
+```
+
+model 2 AGE (X1), SMK (X2)
+```{r,echo=FALSE}
+fit02 <- lm(SBP ~ AGE+SMK, data = DF)
+summary(fit02)
+```
+
+Confidence intervals for all parameters
+```{r,echo=FALSE}
+# CIs for all parameters
+confint(fit02)
+```
+
+Multicollinearity is a phenomenon in which two or more predictor variables in a multiple regression model are highly correlated, meaning that one can be linearly predicted from the others with a non-trivial degree of accuracy.   A tolerance of less than 0.10 and/or a VIF of 10 and above indicates a multicollinearity problem.
+
+Compute VIF and Tolerence
+```{r}
+#VIFs - requires car package
+vif (fit02)
+1/vif(fit02)
+```
+
+model 3 AGE (X1), SMK (X2), QUET (X3
+```{r,echo=FALSE}
+fit03 <- lm(SBP ~ AGE+SMK+QUET, data = DF)
+summary(fit03)
+```
+
+Confidence intervals for all parameters
+```{r,echo=FALSE}
+# CIs for all parameters
+confint(fit03) 
+```
+
+Multicollinearity is a phenomenon in which two or more predictor variables in a multiple regression model are highly correlated, meaning that one can be linearly predicted from the others with a non-trivial degree of accuracy   A tolerance of less than 0.10 and/or a VIF of 10 and above indicates a multicollinearity problem.
+
+Compute VIF and Tolerence
+```{r}
+#VIFs - requires car package
+vif (fit03)
+1/vif(fit03)
+```
+
+Complete the following:
+
+Use model 3 to determine:
+
+  What is the predicted SBP for a 50-year old smoker with a quetelet (QUET) index of 3.5?
+```{r}
+predict(fit03,data.frame(AGE=50, SMK=1, QUET=3.5)) 
+```
+  
+  What is the predicted SBP for a 50-year-old non-smoker with a quetelet index of 3.5?
+```{r}
+predict(fit03,data.frame(AGE=50, SMK=0, QUET=3.5))
+```
+ 
+ For 50-year-old smokers, give an estimate of the change in SBP corresponding to an increase in quetelet index from 3.0 to 3.5.
+```{r}
+predict(fit03,data.frame(AGE=50, SMK=0, QUET=3.5)) - predict(fit03,data.frame(AGE=50, SMK=0, QUET=3.0))
+```
+Using the ANOVA tables, compute and compare the R2-values for models 1,2, and 3:
+
+      Model 1 R2: `r summary(lm(SBP ~ AGE, data = DF))$r.squared` Adjusted R2: `r summary(lm(SBP ~ AGE, data = DF))$adj.r.squared`
+      
+      Model 2 R2: `r summary(lm(SBP ~ AGE+SMK, data = DF))$r.squared` Adjusted R2: `r summary(lm(SBP ~ AGE+SMK, data = DF))$adj.r.squared`
+       
+      Model 3 R3: `r summary(lm(SBP ~ AGE+SMK+QUET, data = DF))$r.squared` Adjusted R2: `r summary(lm(SBP ~ AGE+SMK+QUET, data = DF))$adj.r.squared`
+
+Conduct (separately) the overall F-tests for significant regression under models 1,2, and 3. 
+
+      Model 1 F: `r summary(lm(SBP ~ AGE, data = DF))$f[1]` p-value: `r lmp(fit01)`
+      
+      Model 2 F: `r summary(lm(SBP ~ AGE+SMK, data = DF))$f[1]` p-value: `r anova(fit02)$Pr[1]`
+       
+      Model 3 F: `r summary(lm(SBP ~ AGE+SMK+QUET, data = DF))$f[1]` p-value: `r anova(fit03)$Pr[1]`
+
+##Exercise Two
+```{r}
+summary(DF2)
+```
+
+Generate  the	separate	straight-line	regressions	of	Y	on	X1	(model	1)	and	Y	on	X2
+(model	2).	 Which	of	the	two	independent	variables	would	you	say	is	the	more	important	
+predictor	of	Y?	Discuss	your	response	in	the	homework	forum.
+
+
+model 1 Weight (X1)
+```{r,echo=FALSE}
+fit04 <- lm(choles ~ weight, data = DF2)
+summary(fit04)
+```
+
+Confidence intervals for all parameters
+```{r,echo=FALSE}
+# CIs for all parameters
+confint(fit04)
+```
+
+model 2 age (X2)
+```{r,echo=FALSE}
+fit05 <- lm(choles ~ age, data = DF2)
+summary(fit05)
+```
+
+Confidence intervals for all parameters
+```{r,echo=FALSE}
+# CIs for all parameters
+confint(fit05)
+```
+
+      Model 1 R2: `r summary(lm(choles ~ weight, data = DF2))$r.squared` Adjusted R2: `r summary(lm(choles ~ weight, data = DF2))$adj.r.squared`  p-value of F test: `r anova(fit04)$Pr[1]`
+      
+      Model 2 R2: `r summary(lm(choles ~ age, data = DF2))$r.squared` Adjusted R2: `r summary(lm(choles ~ age, data = DF2))$adj.r.squared`  p-value of F test: `r anova(fit05)$Pr[1]`
+
+      Model 2 is better based on R2 and the p-value of the F-test.
+
+model 3 Weight (X1) and age (X2)
+```{r,echo=FALSE}
+fit06 <- lm(choles ~ weight+age, data = DF2)
+summary(fit06)
+```
+
+Confidence intervals for all parameters
+```{r,echo=FALSE}
+# CIs for all parameters
+confint(fit06)
+```
+
+For  each	of	the	models	in	questions	1	and	2,	determine	the	predicted	cholesterol	level	(Y)	for	patient	4	(with	Y	=263,	X1=	70,	and	X2	=	30)	and	compare	these	predicted	cholesterol	levels	with	the	observed	value.		Comment	on	your	findings	in	the	homework	forum.
+```{r, echo=FALSE}
+predict(fit04,data.frame(weight=70)) 
+predict(fit05,data.frame(age=30)) 
+predict(fit06,data.frame(weight=70,age=30))
+```
+
+      Models 2 and 3 are close to the actual value.  Model 3 is the closest.  Model 1 is the worst predictor.
+
+Carry out the overall F-test for the two-variable model and the partial F-test for the addition of X1 to the model, given that X2 is already in the model.
+```{r,echo=FALSE}
+anova(fit05,fit06)
+```
+
+        P-value is greater than .05; therfore, no benefit in added weight to model that already has age.
+        
+Compute and compare the R2-values for each of the three models considered in questions 1 and 2.
+      
+      Model 1 R2: `r summary(lm(choles ~ weight, data = DF2))$r.squared` Adjusted R2: `r summary(lm(choles ~ weight, data = DF2))$adj.r.squared`
+      
+      Model 2 R2: `r summary(lm(choles ~ age, data = DF2))$r.squared` Adjusted R2: `r summary(lm(choles ~ age, data = DF2))$adj.r.squared`  
+
+      Model 3 R2: `r summary(lm(choles ~ weight+age, data = DF2))$r.squared` Adjusted R2: `r summary(lm(choles ~ weight+age, data = DF2))$adj.r.squared` 
+
+Based on the results obtained in questions 1-5, what do you consider to be the best predictive model involving either one or both of the independent variables considered? Why? Discuss your response in the homework forum.
+
+      I would use model 2 which just uses age as the predictor.
+
+-----
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details, see [R Markdown](http://rmarkdown.rstudio.com).

@@ -1,0 +1,98 @@
+---
+title: "TextMining"
+author: "Dr. B"
+date: "Friday, October 31, 2014"
+output: html_document
+---
+
+```{r, warning=FALSE,message=FALSE}
+##Use my standard openning including call function
+if (Sys.info()["sysname"]=="Linux"){
+  source('/home/bryan/GitHub/MyWork/StdOpen.R')     
+}else{
+  source('C:/GitHub/MyWork/StdOpen.R')   
+}
+
+#Set name of datafile
+datafile <- paste(datadir,"rpttext.txt",sep = "")
+call("tm") # Framework for text mining.
+call("SnowballC") # Provides wordStem() for stemming.
+call("RColorBrewer") # Generate palette of colours for plots.
+call("ggplot2") # Plot word frequencies.
+call("magrittr")
+call("wordcloud")
+##library(Rgraphviz)
+##Set variables used 
+min_freq=25
+max_freq=1000000
+max_words=100
+sparse_terms_nbr = .99   # Enter number as a decimal Higer removes less
+assoc_word = "data"
+correlation = .45
+
+##
+#con <- file("G:/DataCapstone/en_US.twitter.txt", "r")
+#readLines(con, 1)
+#close(con)
+
+##Load the text file
+#txt1.in <- readLines("G:/DataCapstone/en_US.twitter.txt")
+#txt3.in <- readLines("G:/DataCapstone/en_US.news.txt")
+txt2.in <- readLines("G:/DataCapstone/en_US.blogs.txt")
+
+#txt.in <- readLines(con)
+
+##Load an entire directory
+##txt.in <-Corpus(DirSource("C:/Users/bryan_000/Documents/GitHub/Data/Blog_Data/set 1/"), readerControl = list(language="lat"))
+
+##Convert to corpus
+txt <-VectorSource(txt.in)
+txt.corpus <-Corpus(txt)
+rm(txt.in)
+rm(txt)
+
+##Clean up the text
+
+##Conversion to lower case by:
+txt.corpus<- tm_map(txt.corpus, content_transformer(tolower))
+
+##Remove Numbers
+txt.corpus<- tm_map(txt.corpus, removeNumbers)
+
+##Remove Punctuation
+txt.corpus<- tm_map(txt.corpus, removePunctuation)
+
+##Removal of stopwords by:
+txt.corpus<- tm_map(txt.corpus, removeWords, stopwords("english"))
+
+##Stem the Document
+txt.corpus<- tm_map(txt.corpus, stemDocument)
+
+##Stem the Document
+txt.corpus<- tm_map(txt.corpus, stripWhitespace)
+
+##Inspect the corpus
+inspect(txt.corpus)
+
+##Ready to Analyze the data
+tdm <-TermDocumentMatrix(txt.corpus)
+#inspect(tdm)
+
+tdm <- removeSparseTerms(tdm, sparse_terms_nbr)
+##Establish Frequence  can set Low freq and high freq
+findFreqTerms(x=tdm, lowfreq=min_freq, highfreq=max_freq)
+
+# Make a word cloud
+m <- as.matrix(tdm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+##Define colors
+pal2 <- brewer.pal(8,"Dark2")
+
+##png("wordcloud.png", width=1280,height=800)
+wordcloud(d$word,d$freq, scale=c(8,.3),min.freq=min_freq, max.words=max_words, random.order=T, rot.per=.15, colors=pal2, vfont=c("sans serif","plain"))
+
+##Find assocaitions with a selected word
+findAssocs(tdm, assoc_word, correlation)
+```

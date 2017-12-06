@@ -1,0 +1,29 @@
+---
+title: "DoBy"
+author: "Dr. B"
+date: "Thursday, December 25, 2014"
+output: html_document
+---
+
+```{r, warning=FALSE, message=FALSE}
+##Use my standard openning including call function
+if (Sys.info()["sysname"]=="Linux"){
+  source('/home/bryan/GitHub/MyWork/StdOpen.R')     
+}else{
+  source('C:/Users/bryan_000/Documents/GitHub/MyWork/StdOpen.R')   
+}
+call ("nycflights13")
+```
+
+Functions in Do By:
+
+summaryBy
+```{r}
+round(summaryBy(distance~carrier, data=flights, FUN=c(mean,var,sd,length)),2)
+```
+
+```{r}
+
+splitBy(formula = ~carrier+month, data = flights)
+splitBy(formula = c("Evit","Cu"), data = dietox)
+```

@@ -1,0 +1,323 @@
+---
+title: "Forecasting"
+author: "Dr. B"
+date: "Thursday, April 16, 2015"
+output: html_document
+---
+Source: [Forecasting: principles and practice](https://www.otexts.org/book/fpp)
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+# Clear the environment
+rm(list=ls())
+
+# Turn off scientific notations for numbers
+options(scipen = 999)  
+
+# Set locale
+Sys.setlocale("LC_ALL", "English") 
+
+# Set seed for reproducibility
+set.seed(2345)
+
+# load the libraries
+library(forecast)
+library(TTR)
+library(fpp)
+
+##Make a Histogram of forecast errors
+plotForecastErrors <- function(forecasterrors)
+  {
+     # make a histogram of the forecast errors:
+     mybinsize <- IQR(forecasterrors)/4
+     mysd   <- sd(forecasterrors)
+     mymin  <- min(forecasterrors) - mysd*5
+     mymax  <- max(forecasterrors) + mysd*3
+     # generate normally distributed data with mean 0 and standard deviation mysd
+     mynorm <- rnorm(10000, mean=0, sd=mysd)
+     mymin2 <- min(mynorm)
+     mymax2 <- max(mynorm)
+     if (mymin2 < mymin) { mymin <- mymin2 }
+     if (mymax2 > mymax) { mymax <- mymax2 }
+     # make a red histogram of the forecast errors, with the normally distributed data overlaid:
+     mybins <- seq(mymin, mymax, mybinsize)
+     hist(forecasterrors, col="red", freq=FALSE, breaks=mybins)
+     # freq=FALSE ensures the area under the histogram = 1
+     # generate normally distributed data with mean 0 and standard deviation mysd
+     myhist <- hist(mynorm, plot=FALSE, breaks=mybins)
+     # plot the normal curve as a blue line on top of the histogram of forecast errors:
+     points(myhist$mids, myhist$density, type="l", col="blue", lwd=2)
+  }
+
+```
+
+Forecasting is a common statistical task in business, where it helps to inform decisions about the scheduling of production, transportation and personnel, and provides a guide to long-term strategic planning. Business forecasting is often done poorly, and is frequently confused with planning and goals. They are three different things.
+
+    Forecasting is about predicting the future as accurately as possible, given all of the information available, including historical data and knowledge of any future events that might impact the forecasts.
+    
+    Goals are what you would like to have happen. Goals should be linked to forecasts and plans, but this does not always occur. Too often, goals are set without any plan for how to achieve them, and no forecasts for whether they are realistic.
+    
+    Planning is a response to forecasts and goals. Planning involves determining the appropriate actions that are required to make your forecasts match your goals.
+
+Forecasting should be an integral part of the decision-making activities of management, as it can play an important role in many areas of a company. Most organizations require short-term, medium-term and long-term forecasts, depending on the specific application.
+
+    Short-term forecasts are needed for the scheduling of personnel, production and transportation. As part of the scheduling process, forecasts of demand are often also required.
+    
+    Medium-term forecasts are needed to determine future resource requirements, in order to purchase raw materials, hire personnel, or buy machinery and equipment.
+    
+    Long-term forecasts are used in strategic planning. Such decisions must take account of market opportunities, environmental factors and internal resources.
+
+###Statistical forecasting
+The thing we are trying to forecast is unknown (or we wouldn't be forecasting it), and so we can think of it as a random variable. For example, the total sales for next month could take a range of possible values, and until we add up the actual sales at the end of the month we don't know what the value will be. So, until we know the sales for next month, it is a random quantity.
+
+Because next month is relatively close, we usually have a good idea what the likely sales values could be. On the other hand, if we are forecasting the sales for the same month next year, the possible values it could take are much more variable. In most forecasting situations, the variation associated with the thing we are forecasting will shrink as the event approaches. The further ahead we forecast, the more uncertain we are.
+
+When we obtain a forecast, we are estimating the middle of the range of possible values the random variable could take. Very often, a forecast is accompanied by a prediction interval giving a range of values the random variable could take with relatively high probability. For example, a 95% prediction interval contains a range of values which should include the actual future value with probability 95%.
+
+A forecast is always based on some observations. Suppose we denote all the information we have observed as I and we want to forecast yi. We then write yi|I meaning "the random variable yi given what we know in I". The set of values that this random variable could take, along with their relative probabilities, is known as the "probability distribution" of yi|I. In forecasting, we call this the "forecast distribution". When we talk about the "forecast", we usually mean the average value of the forecast distribution, and we put a "hat" over y to show this. Thus, we write the forecast of yi as y^i, meaning the average of the possible values that yi could take given everything we know. Occasionally, we will use y^i to refer to the median (or middle value) of the forecast distribution instead.
+
+###Simple forecasting methods
+Some forecasting methods are very simple and surprisingly effective.  Sometimes one of these simple methods will be the best forecasting method available. But in many cases, these methods will serve as benchmarks rather than the method of choice. Whatever forecasting methods we develop, they will be compared to these simple methods to ensure that the new method is better than these simple alternatives. If not, the new method is not worth considering.
+```{r,warnings=FALSE, messages=FALSE}
+# Load the data and make it into time series
+air <- scan("D:/Data/911air.txt")
+airtimeseries <- ts(air, frequency=12, start=c(1990,1))
+
+rail <- scan("D:/Data/911rail.txt")
+railtimeseries <- ts(rail, frequency=12, start=c(1990,1))
+
+car <- scan("D:/Data/911car.txt")
+cartimeseries <- ts(car, frequency=12, start=c(1990,1))
+```
+
+####Average method
+The forecasts of all future values are equal to the mean of the historical data.
+```{r,warnings=FALSE, messages=FALSE}
+# meanf(y, h) 
+# y contains the time series
+# h is the forecast horizon
+
+meanairfcast <- meanf(airtimeseries,12)
+meanrailfcast <-meanf(railtimeseries,12)
+meancarfcast <- meanf(cartimeseries,12)
+```
+
+```{r, echo=FALSE}
+plot(meanairfcast)
+plot(meanrailfcast)
+plot(meancarfcast)
+```
+
+####Naive Method
+This method is only appropriate for time series data. All forecasts are simply set to be the value of the last observation. 
+```{r,warnings=FALSE, messages=FALSE}
+# naive(y, h) or rwf(y,h)
+# y contains the time series
+# h is the forecast horizon
+
+naiveairfcast <- naive(airtimeseries,12)
+naiverailfcast <-naive(railtimeseries,12)
+naivecarfcast <- naive(cartimeseries,12)
+```
+
+```{r, echo=FALSE}
+plot(naiveairfcast)
+plot(naiverailfcast)
+plot(naivecarfcast)
+```
+
+####Seasonal naive method
+A similar method is useful for highly seasonal data. In this case, we set each forecast to be equal to the last observed value from the same season of the year (e.g., the same month of the previous year).
+```{r,warnings=FALSE, messages=FALSE}
+# naive(y, h) or rwf(y,h)
+# y contains the time series
+# h is the forecast horizon
+
+snaiveairfcast <- snaive(airtimeseries,12)
+snaiverailfcast <-snaive(railtimeseries,12)
+snaivecarfcast <- snaive(cartimeseries,12)
+```
+
+```{r, echo=FALSE}
+plot(snaiveairfcast)
+plot(snaiverailfcast)
+plot(snaivecarfcast)
+```
+
+####Drift method
+A variation on the naïve method is to allow the forecasts to increase or decrease over time, where the amount of change over time (called the drift) is set to be the average change seen in the historical data.  This is equivalent to drawing a line between the first and last observation, and extrapolating it into the future.
+```{r,warnings=FALSE, messages=FALSE}
+#rwf(y,h, drift=TRUE)
+# y contains the time series
+# h is the forecast horizon
+
+rwfairfcast <- rwf(airtimeseries,12, drift=TRUE)
+rwfrailfcast <-rwf(railtimeseries,12, drift=TRUE)
+rwfcarfcast <- rwf(cartimeseries,12, drift=TRUE)
+```
+
+```{r, echo=FALSE}
+plot(rwfairfcast)
+plot(rwfrailfcast)
+plot(rwfcarfcast)
+```
+
+
+###Other 
+
+####Simple exponential smoothing
+The simplest of the exponentially smoothing methods is naturally called "simple exponential smoothing" (SES). In some books, it is called "single exponential smoothing". This method is suitable for forecasting data with no trend or seasonal pattern. 
+```{r,warnings=FALSE, messages=FALSE}
+air2 <- window(airtimeseries,start=1990,end=2004)
+plot(air2, ylab="Number",xlab="Year")
+```
+
+Using the naïve method, all forecasts for the future are equal to the last observed value of the series.
+
+![NAIVE method](NAIVE.png)
+
+Using the average method, all future forecasts are equal to a simple average of the observed data
+
+![Average method](AVERAGE.png)
+
+We often want something between these two extremes. For example it may be sensible to attach larger weights to more recent observations than to observations from the distant past. This is exactly the concept behind simple exponential smoothing. Forecasts are calculated using weighted averages where the weights decrease exponentially as observations come from further in the past --- the smallest weights are associated with the oldest observations:
+
+![Exponential smoothing method](EXPON.png)
+
+```{r,warnings=FALSE, messages=FALSE}
+fit1 <- ses(air2, alpha=0.2, initial="simple", h=11)
+fit2 <- ses(air2, alpha=0.6, initial="simple", h=11)
+fit3 <- ses(air2, h=11)
+
+summary(fit1)
+summary(fit2)
+summary(fit3)
+```
+
+
+```{r, echo=FALSE}
+plot(fit1, plot.conf=FALSE, ylab="Oil (millions of tonnes)",
+  xlab="Year", main="", fcol="white", type="o")
+lines(fitted(fit1), col="blue", type="o")
+lines(fitted(fit2), col="red", type="o")
+lines(fitted(fit3), col="green", type="o")
+lines(fit1$mean, col="blue", type="o")
+lines(fit2$mean, col="red", type="o")
+lines(fit3$mean, col="green", type="o")
+legend("topleft",lty=1, col=c(1,"blue","red","green"), 
+  c("data", expression(alpha == 0.2), expression(alpha == 0.6),
+  expression(alpha == 0.71)),pch=1)
+````
+
+####Holt's linear trend method
+Holt (1957) extended simple exponential smoothing to allow forecasting of data with a trend. This method involves a forecast equation and two smoothing equations (one for the level and one for the trend):
+
+![Holt's linear trend method](HOLTS.png)
+
+```{r, ,warnings=FALSE, messages=FALSE}
+fit1 <- holt(air2, alpha=0.8, beta=0.2, initial="simple", h=11) 
+fit2 <- holt(air2, alpha=0.8, beta=0.2, initial="simple", exponential=TRUE, h=11) 
+fit3 <- holt(air2, alpha=0.8, beta=0.2, damped=TRUE, initial="simple", h=11) 
+
+# Results for models:
+#fit1$model$state
+#fitted(fit1)
+#fit1$mean
+summary(fit1)
+summary(fit2)
+summary(fit3)
+```
+
+```{r, echo=FALSE}
+plot(fit2, type="o", ylab="Air passengers", xlab="Year", 
+     fcol="white", plot.conf=FALSE)
+lines(fitted(fit1), col="blue") 
+lines(fitted(fit2), col="red")
+lines(fitted(fit3), col="green")
+lines(fit1$mean, col="blue", type="o") 
+lines(fit2$mean, col="red", type="o")
+lines(fit3$mean, col="green", type="o")
+legend("topleft", lty=1, col=c("black","blue","red","green"), 
+   c("Data","Holt's linear trend","Exponential trend","Additive damped trend"))
+```
+
+####Holt-Winters exponential smoothing
+If you have a time series that can be described using an additive model with increasing or decreasing trend and seasonality, you can use Holt-Winters exponential smoothing to make short-term forecasts.
+Holt-Winters exponential smoothing estimates the level, slope, and seasonal component at the current time point. 
+
+Smoothing is controlled by three parameters: alpha, beta, and gamma, for the estimates of the level, slope b of the trend component, and the seasonal component, respectively, at the current time point. The parameters alpha, beta and gamma all have values between 0 and 1, and values that are close to 0 mean that relatively little weight is placed on the most recent observations when making forecasts of future values.
+
+```{r,warnings=FALSE, messages=FALSE}
+logairtimeseries <- log(airtimeseries)
+lograiltimeseries <- log(railtimeseries)
+logcartimeseries <- log(cartimeseries)
+
+airHWforecast <- HoltWinters(logairtimeseries)
+airHWforecast
+railHWforecast <- HoltWinters(lograiltimeseries)
+railHWforecast
+carHWforecast <- HoltWinters(logcartimeseries)
+carHWforecast
+#carHWforecast$SSE
+```
+
+We can plot the original time series as a black line, with the forecasted values as a red line on top of that:
+```{r, echo=FALSE}
+plot(airHWforecast)
+plot(railHWforecast)
+plot(carHWforecast)
+```
+
+To make forecasts for future times not included in the original time series, we use the "forecast.HoltWinters()" function in the "forecast" package. For example, the original data is from January 1990 to December 2003. If we wanted to make forecasts for January 2004 to December 2007 (48 more months), and plot the forecasts, we would type:
+```{r, echo=FALSE}
+plot.forecast(forecast.HoltWinters(airHWforecast, h=48))
+plot.forecast(forecast.HoltWinters(railHWforecast, h=48))
+plot.forecast(forecast.HoltWinters(carHWforecast, h=48))
+```
+
+The forecasts are shown as a blue line, and the shaded areas show 80% and 95% prediction intervals.
+
+We can investigate whether the predictive model can be improved upon by checking whether the in-sample forecast errors show non-zero autocorrelations at lags 1-20, by making a correlogram and carrying out the Ljung-Box test:
+```{r}
+acf(forecast.HoltWinters(airHWforecast, h=48)$residuals, lag.max=20)
+Box.test(forecast.HoltWinters(airHWforecast, h=48)$residuals, lag=20, type="Ljung-Box")
+
+acf(forecast.HoltWinters(railHWforecast, h=48)$residuals, lag.max=20)
+Box.test(forecast.HoltWinters(railHWforecast, h=48)$residuals, lag=20, type="Ljung-Box")
+
+acf(forecast.HoltWinters(carHWforecast, h=48)$residuals, lag.max=20)
+Box.test(forecast.HoltWinters(carHWforecast, h=48)$residuals, lag=20, type="Ljung-Box")
+```
+
+Look to see if the correlogram shows that the autocorrelations for the in-sample forecast errors exceed the significance bounds for lags 1-20. Furthermore, if the p-value for Ljung-Box test is > .05, there is little evidence of non-zero autocorrelations at lags 1-20.
+
+We can check whether the forecast errors have constant variance over time, and are normally distributed with mean zero, by making a time plot of the forecast errors and a histogram (with overlaid normal curve):
+```{r, echo=FALSE}
+plot.ts(forecast.HoltWinters(airHWforecast, h=48)$residuals)            # make a time plot
+plotForecastErrors(forecast.HoltWinters(airHWforecast, h=48)$residuals) # make a histogram
+plot.ts(forecast.HoltWinters(railHWforecast, h=48)$residuals)            # make a time plot
+plotForecastErrors(forecast.HoltWinters(railHWforecast, h=48)$residuals) # make a histogram
+plot.ts(forecast.HoltWinters(carHWforecast, h=48)$residuals)            # make a time plot
+plotForecastErrors(forecast.HoltWinters(carHWforecast, h=48)$residuals) # make a histogram
+```
+
+##Forecast Error
+The forecast error (epsilon) is simply the actual value of Y less the predicted value of Y, which is on the same scale as the data. Accuracy measures that are based on epsilon are therefore scale-dependent and cannot be used to make comparisons between series that are on different scales.
+
+The two most commonly used scale-dependent measures are based on the 
+![absolute errors or squared errors](MAERMSE.png).   
+
+When comparing forecast methods on a single data set, the MAE is popular as it is easy to understand and compute.
+
+###Percentage error
+Percentage errors have the advantage of being scale-independent, and so are frequently used to compare forecast performance between different data sets. 
+
+The most commonly used measure is: 
+![Mean Absolute Percentage Error](MAPE.png).  
+
+Percentage errors assume a meaningful zero. For example, a percentage error makes no sense when measuring the accuracy of temperature forecasts on the Fahrenheit or Celsius scales.  Percentage errors also put a heavier penalty on negative errors than on positive errors. This observation led to the use of the so-called "symmetric" MAPE (sMAPE) proposed by Armstrong (1985, p.348), although in general sMAPE should not be used.
+
+
+
+
+
+---
+This is an [R Markdown document](http://rmarkdown.rstudio.com). Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents.

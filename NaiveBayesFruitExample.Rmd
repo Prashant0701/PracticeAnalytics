@@ -1,0 +1,86 @@
+---
+title: "NaiveBayesExample"
+author: "Dr.B"
+date: "Sunday, May 31, 2015"
+output: html_document
+---
+
+```{r,,message=FALSE,warning=FALSE}
+# Load functions
+source('C:/Users/bryan_000/Documents/GitHub/MyWork/functions.R')
+
+# Load the libraries
+library(e1071)
+library(epitools)
+```
+
+
+##Build the Data
+```{r,message=FALSE,warning=FALSE}
+#Add Bananas
+#Add oranges
+Long<-rep("NotLong",400)
+Long <- append(Long, rep("Long",100))
+Sweet<-rep("NotSweet",200)
+Sweet<- append(Sweet,rep("Sweet",300))
+Yellow<- rep("NotYellow",150)
+Yellow<- append(Yellow,rep("Yellow",350))
+Dep<-rep("NotBanana",500)
+df0<- data.frame(Long,Sweet,Yellow,Dep)
+
+Long<-rep("NotLong",100)
+Long <- append(Long, rep("Long",400))
+Sweet<-rep("NotSweet",150)
+Sweet<- append(Sweet,rep("Sweet",350))
+Yellow<- rep("NotYellow",50)
+Yellow<- append(Yellow,rep("Yellow",450))
+Dep<-rep("Banana",500)
+df1 <- data.frame(Long,Sweet,Yellow,Dep)
+
+
+total <- rbind(df0,df1)
+
+rm(df0,df1,Yellow,Sweet,Long,Dep)
+```
+
+##Run Naive Bayes 
+```{r,message=FALSE,warning=FALSE}
+m <- naiveBayes(Dep~., data = total) # or  naiveBayes(total[,1:3],total[,4])
+m
+```
+
+##Intrepret
+
+###The "Prior" probabilities. 
+
+These are our base rates. (If we didn't know any of the fruit attributes, this would be our guess.) 
+
+    P(Banana)  = 0.5 
+    P(Orange)  = 0.3
+    P(Other Fruit) = 0.2
+
+###Probability of "Evidence"
+
+    p(Long)  = 0.5
+    P(Sweet)  = 0.65
+    P(Yellow) = 0.8
+
+###Probability of "Likelihood"
+
+    P(Long|Banana) = 0.8
+    P(Long|Orange) = 0  [Oranges are never long in all the fruit we have seen.]
+    P(Yellow|Other Fruit) =  50/200 = 0.25
+    P(Not Yellow|Other Fruit)  = 0.75
+
+##Make prediction 
+
+Let's say that we are given the properties of an unknown fruit, and asked to classify it. We are told that the fruit is Long, Sweet and Yellow. Is it a Banana? Is it an Orange? Or Is it some Other Fruit?
+
+We can simply run the numbers for each of the 3 outcomes, one by one. Then we choose the highest probability and 'classify' our unknown fruit as belonging to the class that had the highest probability based on our prior evidence (our 1000 fruit training set):
+```{r}
+test<-data.frame(Long="NotLong",Sweet="NotSweet",Yellow="NotYellow")
+pred<-predict(m, test,"raw")
+pred
+summary(pred)
+## http://stackoverflow.com/questions/10059594/a-simple-explanation-of-naive-bayes-classification
+```

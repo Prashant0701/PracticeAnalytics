@@ -1,0 +1,223 @@
+---
+title: "Bootstrap"
+author: "Dr. B"
+date: "Friday, September 26, 2014"
+output: html_document
+---
+The primary task of a statistician is to summarize a sample based study and generalize the finding to the parent population in a scientific manner.  A technical term for a sample summary number is (sample) statistic. Some basic sample statistics are sample mean, sample median, sample standard deviation etc. Of course, a summary statistic like the sample mean will fluctuate from sample to sample and a statistician would like to know the magnitude of these fluctuations around the corresponding population parameter in an overall sense. This is then used in assessing Margin of Errors. The entire picture of all possible values of a sample statistics presented in the form of a probability distribution is called a sampling distribution. There is a plenty of theoretical knowledge of sampling distributions, which can be found in any text books of mathematical statistics. 
+
+Resampling Methods
+------------------
+
+Three resampling methods are commonly used for different purposes:
+
+1. Permutation methods use sampling without replacement to test hypotheses of ???no effect???;
+2. Bootstrap methods use sampling with replacement to establish confidence intervals; 
+3. Monte Carlo methods use repeated sampling from populations with known characteristics to determine how sensitive statistical procedures are to those characteristics.
+
+Bootstrapping
+-------------
+Bootstrap resampling is a computational method of measuring the error in a statistic's estimator.  We have just one dataset. When we compute a statistic on the data, we only know that one statistic ??? we don???t see how variable that statistic is. The bootstrap creates a large number of datasets that we might have seen and computes the statistic on each of these datasets. Thus we get a distribution of the statistic. Key is the strategy to create data that ???we might have seen???.
+
+First, set the seed
+```{r, warning=FALSE,message=FALSE}
+##Use my standard openning including call function
+if (Sys.info()["sysname"]=="Linux"){
+  source('/home/bryan/GitHub/MyWork/StdOpen.R')     
+}else{
+  source('C:/Users/bryan_000/Documents/GitHub/MyWork/StdOpen.R')   
+}
+
+call("UsingR")
+```
+
+Hypertension Dataset (adopted from Statistical methods in genetic epidemiology)
+Systolic blood pressure was measured in 250 progeny from a backcross between two mouse strains. For simplicity, we focus on 50 (randomly chosen) mice genotyped at the D4Mit214 marker (although more markers were genotyped). We want to detect association between the D4Mit214 marker genotype and blood pressure. The values on the left show the systolic blood pressure (in mm of Hg) by the marker genotype, BA (heterozygous) or BB (homozygous) arranged in increasing order.
+
+This is the R code with ?? = 0.05 and number of replicates = 1,000.
+```{r}
+# Heterozygous (BA)
+a = c(86, 88, 89, 89, 92, 93, 94, 94, 94, 95, 95, 96, 96, 97, 97, 98, 98, 99, 99, 101, 106, 107, 110, 113, 116, 118)
+ 
+# Homozygous (BB)
+b = c(89, 90, 92, 93, 93, 96, 99, 99, 99, 102, 103, 104, 105, 106, 106, 107, 108, 108, 110, 110, 112, 114, 116, 116)
+ 
+# Difference between means of observed datasets
+diff.observed = mean(b) - mean(a)
+ 
+# Level of significance
+alpha = 0.05
+ 
+# Number of replicates
+n = 1000
+ 
+# Difference between means of bootstrapped datasets (n replicates)
+diff.bootstrap = NULL
+ 
+for (i in 1 : n) {
+    # Sample with replacement (bootstrapping is with replacement)
+    a.bootstrap = sample  (a, length(a), TRUE)
+    b.bootstrap = sample  (b, length(b), TRUE)
+     
+    diff.bootstrap[i] = mean(b.bootstrap) - mean(a.bootstrap)
+}
+ 
+# Confidence interval
+quantile(diff.bootstrap, c(alpha/2, 1 - alpha/2))
+
+```
+
+Summary Statistics, Boxplots, and Histograms
+```{r}
+#Summary Statistics
+summary(a)
+summary(b)
+summary(a.bootstrap)
+summary(b.bootstrap)
+
+#Boxplots and Histograms
+boxplot(a,b,a.bootstrap,b.bootstrap)
+hist(a)
+hist(b)
+hist(a.bootstrap)
+hist(b.bootstrap)
+diff.observed
+hist(diff.bootstrap)
+
+#We can then plot the distribution of the bootstrapped a.
+plot(density(a.bootstrap), lwd=3, col="steelblue")
+abline(v=mean(a), lwd=3, col='gold')
+abline(v=quantile(a.bootstrap, c(alpha/2)),lwd=3, col='red')
+abline(v=quantile(a.bootstrap, c(1-alpha/2)),lwd=3, col='red')
+
+#We can then plot the distribution of the bootstrapped b.
+plot(density(b.bootstrap), lwd=3, col="steelblue")
+abline(v=mean(b), lwd=3, col='gold')
+abline(v=quantile(b.bootstrap, c(alpha/2)),lwd=3, col='red')
+abline(v=quantile(b.bootstrap, c(1-alpha/2)),lwd=3, col='red')
+
+#We can then plot the distribution of the bootstrapped differences.
+plot(density(diff.bootstrap), lwd=3, col="steelblue")
+abline(v=mean(diff.observed), lwd=3, col='gold')
+abline(v=quantile(diff.bootstrap, c(alpha/2)),lwd=3, col='red')
+abline(v=quantile(diff.bootstrap, c(1-alpha/2)),lwd=3, col='red')
+
+#We can then plot the distribution of the bootstrapped differences.
+dotchart(diff.bootstrap,labels=row.names(diff.bootstrap))
+abline(v=mean(diff.bootstrap), lwd=3, col='gold')
+
+stripchart(a.bootstrap,method="stack",pch=19,col="Red",xlab="Systolic blood pressure")
+stripchart(b.bootstrap,method="stack",pch=19,col="Red",xlab="Systolic blood pressure" )
+stripchart(a,method="stack",pch=19, col="Red",xlab="Systolic blood pressure")
+stripchart(b,method="stack",pch=19, col="Red",xlab="Systolic blood pressure")
+
+```
+
+Bootstrapping Example 2
+```{r}
+data(sleep)
+attach(sleep)
+sleep
+```
+
+```{r}
+#for reference get the t stat of the sample and store it
+t.ref = with(sleep, t.test(extra~group)$statistic) 
+
+# Get just the data
+scores = sleep$extra 
+
+#Set Level of significsnce
+alpha=.05
+
+# the number of replicates
+n = 999         
+
+# establish storage for the results
+t.values = numeric(n)    
+
+#bootstrap putting the values into 2 groups with replacement, calculate t test and store
+for (i in 1:n) {
+ group1 = sample(scores, size=10, replace=T)
+ group2 = sample(scores, size=10, replace=T)
+ t.values[i] = t.test(group1,group2)$statistic
+}
+
+#Compare 
+tapply(extra, group, mean)
+mean(group1)
+mean(group2)
+
+#make a histogram of the t values and plot the t test from the original sample as well as  quantiles
+hist(t.values)
+abline(v=t.ref,lwd=3, col='gold')
+abline(v=quantile(t.values, c(alpha/2)),lwd=3, col='red')
+abline(v=quantile(t.values, c(1-alpha/2)),lwd=3, col='red')
+
+#Dotplot
+stripchart(extra~group,method="stack", pch=c(1,2,3), col=c("red","blue","green"), 
+    xlab="Extra Hours of Sleep",  ylab="Group", main="Extra Sleep vs. Drug", offset=0.5)
+
+
+#Calculate the simulation p-value ... 
+#Remember, "t.values<.05" generates a logical vector of TRUEs and FALSEs, in which TRUEs count as ones and FALSEs count as zeros. 
+# one-tailed (lower)
+mean(t.values<=t.ref)  
+
+# two-tailed
+mean(abs(t.values)>=abs(t.ref))
+
+```
+
+Bootstapping 3
+--------------
+
+```{r}
+#set the seed for reporducability
+rats = c(10, 27,30, 40, 46, 51, 52, 104, 146)
+
+
+# Level of significance
+alpha = 0.05
+ 
+# Number of replicates
+n = 10000
+
+#Bootstrap means
+rats.bootstrap = NULL
+for (i in 1:n) {
+    rats.bootstrap[i] = mean(sample(rats, size=9, replace=T))
+   }
+
+#Dot plot of original data with mean and calculated confidence intervals
+dotchart(rats)
+abline(v=mean(rats),lwd=3, col='gold')
+abline(v=mean(rats)+qt(alpha/2,df=length(rats)-1)*sd(rats)/sqrt(length(rats)),lwd=3, col='red')
+abline(v=mean(rats)+qt(1-alpha/2,df=length(rats)-1)*sd(rats)/sqrt(length(rats)),lwd=3, col='red')
+
+#Dot plot bootstrapped data with mean from original data and quantiles
+dotchart(rats.bootstrap)
+abline(v=mean(rats),lwd=3, col='gold')
+abline(v=quantile(rats.bootstrap, c(alpha/2)),lwd=3, col='red')
+abline(v=quantile(rats.bootstrap, c(1-alpha/2)),lwd=3, col='red')
+```
+
+
+```{r}
+##rm(list=ls())
+##library(UsingR)
+data(father.son)
+x <- father.son$sheight #observations
+n <-length(x)  #Set n to the number of observations
+b <- 10000 ##Bootstrap number of samples 
+resamples <- matrix(sample(x,n*b,replace=TRUE),b,n) #matrix with every row being a bootsrap sample
+medians <-apply (resamples,1,median)
+hist(medians)
+abline(v=median(x),col="red")
+sd(medians)
+quantile(medians, c(.025,.975))
+abline(v=quantile(medians, c(.025)),col="blue")
+abline(v=quantile(medians, c(.975)),col="blue")
+
+```
+
